@@ -137,9 +137,13 @@ def compute_CIDP(
 
     # Let R[i][i] = epsl[i] / w[i]
     for i in range(n):
-        # When L[i][i] == 0, this value will not be used in computing
         if mat_L[i][i]:
             mat_R[i][i] = epsl[idx2uid[i]] / mat_L[i][i]
+        else:
+            # When L[i][i] == 0, this value will not be used in
+            # computing. Reseting to 0 for log readability.
+            mat_R[i][i] = 0
+
 
     log.debug("L = " + "\n    ".join(_format_matrix(mat_L)))
     log.debug("R = " + "\n    ".join(_format_matrix(mat_R)))
