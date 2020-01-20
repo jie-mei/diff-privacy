@@ -166,10 +166,10 @@ def compute_IDFA(
     log.debug(f"affected = {affected}")
 
     for uid in itds:
-        log.info(f"Optimizing user {uid}...")
         if uid not in riskest:
             continue
 
+        log.info(f"Optimizing user {uid}...")
         if epsl[uid] < cidp[uid] <= 1:
             while True:
                 for uid_ in affected[uid]:
@@ -194,14 +194,17 @@ def sanitize(
         p :float = 0.5,            # risk threshold
         max_round :int = 1000      # maximum number of rounds
     ) -> Dict[int, Dict[Trajectory, float]]:
-    noise_scale = {uid: [] for uid in itds}
+    # Initialze noise count by true count
+    noise_count = {uid: {t: itd.count(t) for t in itd.trajectories}
+                   for uid, itd in itds.items()}
 
     # Identify risky trajectories of each user and sort them by they
     # risk value in an ascending order.
     risky = {}
     for uid, itd in itds.items():
         tv = [(t, _risk(itd.count(t), t, itds)) for t in itd.trajectories]
-        risky[uid] = [t for t, v in sorted(tv, key=lambda x: x[1]) if v >= p]
+        risky[uid] = [t for t, v in sorted(tv, key=lambda x: x[1], reverse=True)
+                      if v >= p]
     log.debug(f"risky = {risky}")
 
     for round_ in range(1, max_round):
@@ -219,6 +222,7 @@ def sanitize(
         # Sanitize risky trajectories
         epsl_opt = compute_IDFA(itds, riskest)
 
+        delta_f = {uid: 0 for uid in itds}
         for uid, itd in itds.items():
             if uid in riskest:
                 # Reduce the risk dwon to threshold
@@ -227,18 +231,18 @@ def sanitize(
                     v = _risk(cnt, riskest[uid], itds)
                     if v < p: break
                     cnt -= 1
-                loops = itd.count(riskest[uid]) - cnt
-        
-                #noise[uid] += abs(np.random.laplace(0, loops / epsl_opt[uid], 1))
-                noise_scale[uid] += loops / epsl_opt[uid],
-        log.info(f"noise_scale = {noise_scale}")
+                delta_f[uid] = itd.count(riskest[uid]) - cnt
+        log.info(f"delta_f = {delta_f}")
 
         # Add noisy to count
-        noise_count = {uid: {} for uid in itds}
         for uid, itd in itds.items():
-            for t in itd.trajectories:
-                noise_count[uid][t] = itd.count(t)
-                for scale in noise_scale[uid]:
+            if uid in riskest:
+                # Remove delta_f
+                noise_count[uid][riskest[uid]] -= delta_f[uid]
+
+                # Add laplace noise
+                for t in itd.trajectories:
+                    scale = delta_f[uid] / epsl_opt[uid]
                     noise_count[uid][t] += np.random.laplace(0, scale, 1)
 
-        return noise_count
+    return noise_count
