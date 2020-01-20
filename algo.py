@@ -249,4 +249,11 @@ def sanitize(
                     scale = delta_f[uid] / epsl_opt[uid]
                     noise_count[uid][t] += np.random.laplace(0, scale, 1)
 
+                # Convert to non-negative numbers
+                for t in itd.trajectories:
+                    if noise_count[uid][t] > 0:
+                        noise_count[uid][t] = noise_count[uid][t][0]
+                    else:
+                        noise_count[uid][t] = 0
+
     return noise_count
