@@ -170,7 +170,7 @@ def compute_IDFA(
     log.debug(f"affected = {affected}")
 
     for uid in itds:
-        if uid not in riskest:
+        if cidp[uid] <= epsl[uid]:
             continue
 
         log.info(f"Optimizing user {uid}...")
